@@ -1,0 +1,24 @@
+function ::= 'fn' identifier '('  ')' '{' statement* '}'
+;
+
+statement ::= print_statement
+	| definition
+	| declaration
+	| assign
+;
+
+expression ::= indentifier
+	| indentifier '+' expression
+	| indentifier '-' expression
+	| indentifier '*' expression
+	| indentifier '/' expression
+	| indentifier ':' expression
+	| indentifier '==' expression
+	| '-' expression
+;
+
+type ::= 'int' | 'str' | 'float'
+;
+
+identifier ::= [a-z] ([a-z] | [0-9] | '_')*
+;
