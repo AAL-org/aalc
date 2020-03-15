@@ -33,6 +33,13 @@
 *                     ``...------------------...``                     
 *                          ````..........````                          
 */                                                                      
+
+/* CURRENT STATE OF BEING
+* so when ever it back tracks it doesn't put the old token back
+* i am too lazy to write something to go back properly
+* i could use the old token or an array of token, but nah
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,8 +48,20 @@
 
 #define mkleaf(x,y) mknode(x,y,NULL,NULL)
 #define mkunary(x,y,z) mknode(x,y,z,NULL)
+
 #define semi() match(T_END)
 #define ident() match(T_IDNT)
+
+#define openbracket() match(T_BKO)
+#define closebracket() match(T_BKC)
+#define openparentheses() match(T_PRO)
+#define closeparentheses() match(T_PRC)
+
+#define insertsymbolvalue(type,t) {switch (type){ \
+		case INT:{symbol_v.integer = t.integer; break;} \
+		case FLOAT:{symbol_v.decimal = t.decimal; break;} \
+		case STRING:{symbol_v.string = t.string; break;}} \
+		}
 
 void fatal (const char* message, ...)
 {
@@ -56,7 +75,7 @@ void fatal (const char* message, ...)
 enum TOKEN_TYPE
 {
 	T_ADD = 0, T_SUB, T_MUL, T_DIV, T_ASN, T_SEP, // operators
-	T_FN, T_INT, T_STR, T_FLT, // keywords
+	T_FN, T_INT, T_FLT, T_STR, // keywords
 	T_INTLIT, T_FLTLIT, T_STRLIT, // literals
 	T_BKO, T_BKC, T_PRO, T_PRC, T_END, // syntax
 	T_IDNT,
@@ -65,19 +84,15 @@ enum TOKEN_TYPE
 static const char *TOKEN_TYPE_DEBUG[] = 
 {
 	"+", "-", "*", "/", ":", ",", // operators
-	"fn", "int", "str", "float", // keywords
-	"INTEGER", "FLOAT", "STR", // literals
+	"fn", "int", "float", "str", // keywords
+	"INTEGER", "FLOAT", "STRING", // literals
 	"{", "}", "(", ")", ";", // syntax
 	"IDENTIFIER"
 };
 
 enum AST_OP
 {
-	O_ADD = 0, O_SUB, O_MUL, O_DIV, O_ASN, O_SEP, // operators
-	O_FN, O_INT, O_STR, O_FLT, // keywords
-	O_INTLIT, O_FLTLIT, O_STRLIT, // literals
-	O_BKO, O_BKC, O_PRO, O_PRC, O_END, // syntax
-	O_IDNT
+	A_ASN, A_STAT, A_FUNC, A_PRNT, A_EXPR, A_COMB
 };
 
 enum SYMBOL_TYPE
@@ -92,9 +107,9 @@ typedef struct token
 {
 	int token;
 	union {
-		int val;
-		float flt;
-		char *str;
+		long int integer;
+		double decimal;
+		char *string;
 	};
 } token;
 
@@ -121,11 +136,11 @@ typedef struct symbol
 // global trash
 FILE* infile;
 int c, putbc = 0, line = 0, tbnxt = 0;
-token T;
+token T, oT;
 symbol table[TABLESIZE];
 union {long int integer;double decimal; char* string;} symbol_v;
 
-static void insertsymbol (int type, const char *key)
+static int insertsymbol (int type, const char *key)
 {
 	if (tbnxt == 1024)
 		fatal("Symbol table has exceded 1024 items");
@@ -143,16 +158,17 @@ static void insertsymbol (int type, const char *key)
 			table[tbnxt].v.string = symbol_v.string;
 			break;
 	}
-	++tbnxt;
+	return tbnxt++;
 }
 
 static int findsymbol (const char* key)
 {
 	for (int i = 0; i < tbnxt; ++i)
 	{
-		if (!strcmp(table[i].k, key))
+		if (!strcmp(key, table[i].k))
 			return i;
 	}
+	return -1;
 }
 
 static void putback(int c_) { putbc = c_; }
@@ -185,7 +201,7 @@ static void identscan(void)
 
 	// Set the token type
 	T.token = T_IDNT;
-	T.str = s;
+	T.string = s;
 	switch (s[0])
 	{
 		case 'f':{ // fn, float
@@ -219,7 +235,7 @@ static void numscan (void)
 		if (*p == '.')
 		{
 			if (dodec)
-				fatal("you cant have two decimals!");
+				fatal("you cant have two decimals! line: %d", line);
 			dodec = 1;
 			d = val;
 			c = fgetc(infile);
@@ -238,8 +254,8 @@ static void numscan (void)
 		c = fgetc(infile);
 	}
 	putback(c);
-	T.token = dodec ? T_FLTLIT : T_FLTLIT;
-	dodec ? (T.flt = d) : (T.val = val);
+	T.token = dodec ? T_FLTLIT : T_INTLIT;
+	dodec ? (T.decimal = d) : (T.integer = val);
 }
 
 static int whitespace (int c)
@@ -297,7 +313,7 @@ static int next (void)
 			}
 		case '"':
 			T.token = T_STRLIT;
-			T.str = stringscan();
+			T.string = stringscan();
 			break;
 		case '(':
 			T.token = T_PRO;
@@ -333,10 +349,11 @@ static int next (void)
 
 static void match (int op)
 {
+	next();
 	if (T.token == op)
-		next();
+		oT = T;
 	else
-		fatal("Expected: %s", TOKEN_TYPE_DEBUG[op]);
+		fatal("Expected: %s at line: %d", TOKEN_TYPE_DEBUG[op], line);
 }
 
 astnode* mknode (int op, int value, astnode *left, astnode *right)
@@ -352,9 +369,122 @@ astnode* mknode (int op, int value, astnode *left, astnode *right)
 	return n;
 }
 
-// astnode* mkast (void)
-// {
-// }
+astnode* parse_expression()
+{
+	match(T_STRLIT);
+	insertsymbolvalue(STRING, T);
+	int index = insertsymbol(STRING, "anonmous");
+
+	return mkleaf(A_EXPR, index);
+}
+
+astnode* parse_declaration()
+{
+	next(); // THESE TOO
+	// If it doesn't look like a declaration backtrack
+	if (!(T.token == T_INT || T.token == T_FLT || T.token == T_STR))
+		return NULL;
+	int type = T.token-T_INT;
+
+	// Match a identifier
+	ident();
+	char* name = T.string;
+
+	// Assign symbol
+	match(T_ASN);
+	
+	// Match the value
+	match(type+T_INTLIT);
+
+	// add it to the symbol table
+	insertsymbolvalue(type, T);
+	int index = insertsymbol(type, name);
+
+	return mkleaf(A_ASN, index);
+}
+
+astnode* parse_print_statement()
+{
+	next(); // THESE 3 LINES ARE THE PROBLEM
+	if (T.token != T_IDNT)
+		return NULL;
+	openparentheses();
+
+	astnode *left = parse_expression();
+
+	closeparentheses();
+
+	return mkunary(A_PRNT, -1, left);
+}
+
+astnode* parse_statment()
+{
+	astnode *left;
+	// try to parse a print statement
+	left = parse_print_statement();
+	if (left != NULL){
+		printf("parsed print statment\n");
+		return mkunary(A_STAT, -1, left);
+	}
+	// try to parse a declaration
+	left = parse_declaration();
+	if (left != NULL){
+		printf("parsed declaration statment\n");
+		return mkunary(A_STAT, -1, left);
+	}
+
+	return NULL;
+}
+
+astnode* parse_compound_statement()
+{
+	astnode *left = NULL, *tree;
+	openbracket();
+
+	for(;;)
+	{
+		tree = parse_statment();
+		semi();
+
+		if (tree != NULL)
+		{
+			if (left == NULL)
+				left = tree;
+			else
+				left = mknode(A_COMB, -1, left, tree);
+		}
+		next();
+		
+		if (T.token == T_BKC)
+		{
+			closebracket();
+			return left;
+		}
+	}
+}
+
+astnode* parse_function()
+{
+	astnode *left;
+
+	// Match function signifier
+	match(T_FN); 
+
+	// function name, idk how to do functions
+	ident();
+	int i = insertsymbol(FUNCTION, T.string);
+	// parameters
+	openparentheses(); closeparentheses();
+	// function body
+	left = mkunary(A_FUNC, i, parse_compound_statement());
+
+	return left;
+}
+
+astnode* mkast (void)
+{
+	return parse_function();
+}
 
 int main (int argc, char *argv[])
 {
@@ -366,15 +496,20 @@ int main (int argc, char *argv[])
 		if ((T.token >= T_ADD  && T.token <= T_FLT) || (T.token >= T_BKO  && T.token <= T_END))
 			printf("token: \'%s\'\n", TOKEN_TYPE_DEBUG[T.token]);
 		else if (T.token == T_INTLIT)
-			printf("token: %s\t Value: %d\n", TOKEN_TYPE_DEBUG[T.token], T.val);
+			printf("token: %s\t\t value: %ld\n", TOKEN_TYPE_DEBUG[T.token], T.integer);
 		else if (T.token == T_FLTLIT)
-			printf("token: %s\t\t Value: %f\n", TOKEN_TYPE_DEBUG[T.token], T.flt);
+			printf("token: %s\t\t value: %lf\n", TOKEN_TYPE_DEBUG[T.token], T.decimal);
 		else if (T.token == T_IDNT)
-			printf("token: %s\t Value: %s\n", TOKEN_TYPE_DEBUG[T.token], T.str);
+			printf("token: %s\t value: %s\n", TOKEN_TYPE_DEBUG[T.token], T.string);
 		else if (T.token == T_STRLIT)
-			printf("token: %s\t\t Value: \"%s\"\n", TOKEN_TYPE_DEBUG[T.token], T.str);
+			printf("token: %s\t\t value: \"%s\"\n", TOKEN_TYPE_DEBUG[T.token], T.string);
 	}
-	
+	// Reset the global things
+	fseek(infile, 0, SEEK_SET);
+	c = 0; line = 0;
+
+	astnode *root = mkast();
+
 	fclose(infile);
 	exit(0);
 }

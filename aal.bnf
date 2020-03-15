@@ -12,12 +12,26 @@ expression ::= indentifier
 	| indentifier '-' expression
 	| indentifier '*' expression
 	| indentifier '/' expression
-	| indentifier ':' expression
 	| indentifier '==' expression
 	| '-' expression
 ;
 
+print_statement ::= 'print' '(' expression ')' ';'
+;
+
+definition ::= type identifier
+;
+
+declaration ::= type identifier ':' literal ';'
+;
+
+assign ::= identifier ':' literal
+;
+
 type ::= 'int' | 'str' | 'float'
+;
+
+literal ::= number | decimal | string
 ;
 
 identifier ::= [a-z] ([a-z] | [0-9] | '_')*

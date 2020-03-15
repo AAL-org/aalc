@@ -1,0 +1,4 @@
+fn main () {
+	str gamer : "test";
+	print("epic");
+}
