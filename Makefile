@@ -9,10 +9,10 @@ LDFLAGS=
 all: ${OUTPUT}
 
 %.o: %.cpp
-	${CXX} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
+	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 
 ${OUTPUT}: ${OBJ}
-	${CXX} ${CFLAGS} ${LDFLAGS} -o $@ $<
+	${CC} ${CFLAGS} ${LDFLAGS} -o $@ $<
 
 clean:
 	rm -f ${OBJ}

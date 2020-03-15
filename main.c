@@ -11,11 +11,11 @@
 *     `.--------------------------------------------------------.`     
 *    `.----------------------------------------------------------.`    
 *    .-------------/yso/-----------------------/oshy:-------------.    
-*   .------------..:oshddy+-----------------:shdds+/...------------.   
+*   .------------..:oshddy+-----------------:shid.+/...------------.   
 *   .---------..`      ./hdh+-------------:yddo-       `..---------.   
 *  `---------.`    `.`    :hdy-----------/dds.   `--.    `.---------`  
-*  `--------.`   -ydddy-   .hdh---------:ddo    +ddddy.   `---------`  
-*  .--------.    ydddddy    -+/----------//.   .dddddd+   `.--------.  
+*  `--------.`   -ydddy-   .hdh---------:ddo    +daddy.   `---------`  
+*  .--------.    yydaddy    -+/----------//.   .dddddd+   `.--------.  
 *  `--------.`   -hdddh:   `.--------------.    /hdddo`   .---------`  
 *  `--------:/`    .-.    `.----------------.`    ``     -/:--------`  
 *   .-----:////:.      `-:::----------------:::-`     `-/////------.   
@@ -25,132 +25,139 @@
 *    ./////////////////hs/.                  ./sy/////////////////.    
 *    ://///////////////hddddyso//:::::://osyddddh/////////////////:    
 *    -/////////////////dddddddddddddddddddddddddh/////////////////-    
-*    `:///////////////oddddddddddddddddddddddddddo///////////////:`    
+*    `:///////////////oddddddddddddddheckddddddddo///////////////:`    
 *     `-/////////////--:ohddddddddddddddddddddho:--/////////////-`     
 *       `-:///////:--------/oyhddddddddddhyo/--------:///////:-`       
 *           `````..--------------::::::---------------.`````           
 *                 ``..----------------------------..``                 
 *                     ``...------------------...``                     
 *                          ````..........````                          
+* ADD A FUCKING SYMBOL TABLE YOU NOOB
 */                                                                      
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdarg.h>
-#include <vector>
 
-void diemofo (const char* message, ...)
+void fatal (const char* message, ...)
 {
 	va_list args;
 	va_start(args, message);
-	vprintf(message, args);
+	vfprintf(stderr, message, args);
 	va_end(args);
 	exit(1);
 }
 
-
-
 enum TOKEN_TYPE
 {
-	T_ADD, // +
-	T_SUB, // -
-	T_MUL, // *
-	T_DIV, // /
-	T_INTLIT, //* 123
-	T_STRLIT, //* "gamer"
-	T_FN, // fn
-	T_IDNT, //* myint
-	T_BRKO, // {
-	T_BRKC, // }
-	T_PARO, // (
-	T_PARC, // )
-	T_INT, // int
-	T_STR, // str
-	T_ASIGN, // :
-	T_END, // ;
-	T_FLOAT, // float
-	T_FLTLIT, // 123.553
-	T_SEP, // ,
+	T_ADD = 0, T_SUB, T_MUL, T_DIV, T_ASN, T_SEP, // operators
+	T_FN, T_INT, T_STR, T_FLT, // keywords
+	T_INTLIT, T_FLTLIT, T_STRLIT, // literals
+	T_BKO, T_BKC, T_PRO, T_PRC, T_END, // syntax
+	T_IDNT,
 };
 
-static const char *TOKEN_TYPE_DEBUG[] = {
-	"+",
-	"-",
-	"*",
-	"/",
-	"INT LIT",
-	"STR LIT",
-	"FN",
-	"IDENTIFIER",
-	"{",
-	"}",
-	"(",
-	")",
-	"INT",
-	"STR",
-	"ASIGN",
-	"END LINE",
-	"FLOAT",
-	"FLOAT LIT",
-	"SEP",
-};
-
-
-struct token
+static const char *TOKEN_TYPE_DEBUG[] = 
 {
-	int type;
+	"+", "-", "*", "/", ":", ",", // operators
+	"fn", "int", "str", "float", // keywords
+	"INTEGER", "FLOAT", "STR", // literals
+	"{", "}", "(", ")", ";", // syntax
+	"IDENTIFIER"
+};
+
+enum AST_OP
+{
+	O_ADD = 0, O_SUB, O_MUL, O_DIV, O_ASN, O_SEP, // operators
+	O_FN, O_INT, O_STR, O_FLT, // keywords
+	O_INTLIT, O_FLTLIT, O_STRLIT, // literals
+	O_BKO, O_BKC, O_PRO, O_PRC, O_END, // syntax
+	O_IDNT
+};
+
+typedef struct token
+{
+	int token;
 	union {
 		int val;
 		float flt;
 		char *str;
 	};
-};
-std::vector<token> tokens;
-FILE* infile;
-int c, b, line;
-token t;
+} token;
 
-void putback(int c_)
+typedef struct astnode
 {
-	b = c_;
-}
+	int op;
+	union {
+		int val;
+		float flt;
+		char *str;
+	};
+	struct astnode *left;
+	struct astnode *right;
+} astnode;
 
-char* stringscan(void)
+// global trash
+FILE* infile;
+int c, putbc, line;
+token T;
+
+static void putback(int c_) { putbc = c_; }
+
+static char* stringscan(void)
 {
 	int i = 0;
 	char* s = (char*)malloc(256);
+	if (s == NULL)
+		fatal("failed malloc");
 	s[i] = fgetc(infile);
 	while (s[i] != '"')
 		s[++i] = fgetc(infile);
 	s[i] = 0;
+	
 	return s;
 }
 
-void identscan(void)
+static void identscan(void)
 {
-	int i = 0;
-	char* s = (char*)malloc(256);
+	int i = 0; char* s = (char*)malloc(256);
+	if (s == NULL)
+		fatal("failed malloc");
 	s[0] = c;
 	while ((s[i] <= 'z' && s[i] >= 'a') || (s[i] <= 'Z' && s[i] >= 'A') || (s[i] <= '9' && s[i] >= '0') || s[i] == '_')
 		s[++i] = fgetc(infile);
+	// put back the invalid char and end the string
 	putback(s[i]);
 	s[i] = 0;
 
-	// see if its a keyword
-	if (!strcmp("fn", s))
-		t.type = T_FN;
-	else if (!strcmp("int", s))
-		t.type = T_INT;
-	else if (!strcmp("str", s))
-		t.type = T_STR;
-	else
-		t.type = T_IDNT;
-	t.str = s;
+	// Set the token type
+	T.token = T_IDNT;
+	T.str = s;
+	switch (s[0])
+	{
+		case 'f':{ // fn, float
+			if(!strcmp("float", s))
+				T.token = T_FLT;
+			else if (!strcmp("fn", s))
+				T.token = T_FN;
+
+			break;}
+		case 'i':{ // int
+			if(!strcmp("int", s))
+				T.token = T_INT;
+
+			break;}
+		case 's':{ // str
+			if(!strcmp("str", s))
+				T.token = T_STR;
+
+			break;}
+	}
 }
 
-// wtf lmao
-void numscan (void)
+// wtf lmao, i'll clean this later
+static void numscan (void)
 {
 	int val = 0, k, dodec = 0;
 	float d, decc = 1;
@@ -160,7 +167,7 @@ void numscan (void)
 		if (*p == '.')
 		{
 			if (dodec)
-				diemofo("you cant have two decimals!");
+				fatal("you cant have two decimals!");
 			dodec = 1;
 			d = val;
 			c = fgetc(infile);
@@ -179,11 +186,11 @@ void numscan (void)
 		c = fgetc(infile);
 	}
 	putback(c);
-	t.type = dodec ? T_FLTLIT : T_INTLIT;
-	dodec ? (t.flt = d) : (t.val = val);
+	T.token = dodec ? T_FLTLIT : T_FLTLIT;
+	dodec ? (T.flt = d) : (T.val = val);
 }
 
-int whitespace (int c)
+static int whitespace (int c)
 {
 	if (c == ' ' || c == '\t')
 		return 1;
@@ -194,28 +201,33 @@ int whitespace (int c)
 	return 1;
 }
 
-int next (void)
+static int next (void)
 {
-	if (b) {
-		c = b;
-		b = 0;
+	// get the current next character
+	if (putbc) {
+		c = putbc;
+		putbc = 0;
 	} else
 		c = fgetc(infile);
 
+	// check its not EOF
 	if (c == EOF)
 		return 0;
+
+	// skip whitespace
 	if (whitespace(c))
 		return next();
+
 	switch (c)
 	{
 		case '+':
-			t.type = T_ADD;
+			T.token = T_ADD;
 			break;
 		case '-':
-			t.type = T_SUB;
+			T.token = T_SUB;
 			break;
 		case '*':
-			t.type = T_MUL;
+			T.token = T_MUL;
 			break;
 		case '/':
 			{
@@ -228,85 +240,79 @@ int next (void)
 					return next();
 				}
 				putback(c);
-				t.type = T_DIV;
+				T.token = T_DIV;
 				break;
 			}
 		case '"':
-			t.type = T_STRLIT;
-			t.str = stringscan();
+			T.token = T_STRLIT;
+			T.str = stringscan();
 			break;
 		case '(':
-			t.type = T_PARO;
+			T.token = T_PRO;
 			break;
 		case ')':
-			t.type = T_PARC;
+			T.token = T_PRC;
 			break;
 		case '{':
-			t.type = T_BRKO;
+			T.token = T_BKO;
 			break;
 		case '}':
-			t.type = T_BRKC;
+			T.token = T_BKO;
 			break;
 		case ':':
-			t.type = T_ASIGN;
+			T.token = T_ASN;
 			break;
 		case ';':
-			t.type = T_END;
+			T.token = T_END;
 			break;
 		default:
 		{
-			if (isalpha(c))
-			{
-				identscan();
-				break;
-			}
 			if (isdigit(c))
-			{
 				numscan();
-				break;
-			}
-			diemofo("Unknown character %c at line %d\n", c, line);
+			else if (isalpha(c))
+				identscan();
+			else
+				fatal("Unknown character %c at line %d\n", c, line);
+			break;
 		}
 	}
 	return 1;
 }
 
-struct astnode
+static void match (int op)
 {
-	int op;
-	union {
-		int val;
-		float flt;
-		char *str;
-	};
-	astnode *left;
-	astnode *right;
+	if (T.token == op)
+		next();
+	else
+		fatal("Expected: %s", TOKEN_TYPE_DEBUG[op]);
+}
 
-	static astnode makeast(std::vector<token> *tokens)
-	{
-		
-	}
-};
+astnode makeast () {
+
+
+	astnode a;
+	return a;
+}
 
 int main (int argc, char *argv[])
 {
+	if (argc < 2)
+		fatal("cannot compile without a input file\nUSAGE: %s <input>\n", argv[0]);
 	infile = fopen(argv[1], "r");
 	while(next())
 	{
-		tokens.push_back(t);
-		#ifdef debug
-		if (t.type == T_INTLIT)
-			printf("Token: %s Value: %d\n", TOKEN_TYPE_DEBUG[t.type], t.val);
-		else if (t.type == T_FLTLIT)
-			printf("Token: %s Value: %f\n", TOKEN_TYPE_DEBUG[t.type], t.flt);
-		else if (t.type == T_STRLIT || t.type == T_FN || t.type == T_INT || t.type == T_STR || t.type == T_IDNT)
-			printf("Token: %s Value: %s\n", TOKEN_TYPE_DEBUG[t.type], t.str);
-		else
-			printf("Token: %s\n", TOKEN_TYPE_DEBUG[t.type]);
-		#endif
+		if ((T.token >= T_ADD  && T.token <= T_FLT) || (T.token >= T_BKO  && T.token <= T_END))
+			printf("token: \'%s\'\n", TOKEN_TYPE_DEBUG[T.token]);
+		else if (T.token == T_INTLIT)
+			printf("token: %s\t Value: %d\n", TOKEN_TYPE_DEBUG[T.token], T.val);
+		else if (T.token == T_FLTLIT)
+			printf("token: %s\t\t Value: %f\n", TOKEN_TYPE_DEBUG[T.token], T.flt);
+		else if (T.token == T_IDNT)
+			printf("token: %s\t Value: %s\n", TOKEN_TYPE_DEBUG[T.token], T.str);
+		else if (T.token == T_STRLIT)
+			printf("token: %s\t\t Value: \"%s\"\n", TOKEN_TYPE_DEBUG[T.token], T.str);
 	}
-
 	
 	fclose(infile);
-	return 0;
+	exit(0);
 }
