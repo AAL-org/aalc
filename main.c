@@ -32,13 +32,17 @@
 *                 ``..----------------------------..``                 
 *                     ``...------------------...``                     
 *                          ````..........````                          
-* ADD A FUCKING SYMBOL TABLE YOU NOOB
 */                                                                      
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdarg.h>
+
+#define mkleaf(x,y) mknode(x,y,NULL,NULL)
+#define mkunary(x,y,z) mknode(x,y,z,NULL)
+#define semi() match(T_END)
+#define ident() match(T_IDNT)
 
 void fatal (const char* message, ...)
 {
@@ -76,6 +80,14 @@ enum AST_OP
 	O_IDNT
 };
 
+enum SYMBOL_TYPE
+{
+	INT = 0,
+	FLOAT,
+	STRING,
+	FUNCTION,
+};
+
 typedef struct token
 {
 	int token;
@@ -89,19 +101,59 @@ typedef struct token
 typedef struct astnode
 {
 	int op;
-	union {
-		int val;
-		float flt;
-		char *str;
-	};
+	int value;
 	struct astnode *left;
 	struct astnode *right;
 } astnode;
 
+typedef struct symbol 
+{
+	int type;
+	const char* k;
+	union {
+		long int integer;
+		double decimal;
+		char* string;
+	} v;
+} symbol;
+
+#define TABLESIZE 1024
 // global trash
 FILE* infile;
-int c, putbc, line;
+int c, putbc = 0, line = 0, tbnxt = 0;
 token T;
+symbol table[TABLESIZE];
+union {long int integer;double decimal; char* string;} symbol_v;
+
+static void insertsymbol (int type, const char *key)
+{
+	if (tbnxt == 1024)
+		fatal("Symbol table has exceded 1024 items");
+	table[tbnxt].type = type;
+	table[tbnxt].k = key;
+	switch (type)
+	{
+		case INT:
+			table[tbnxt].v.integer = symbol_v.integer;
+			break;
+		case FLOAT:
+			table[tbnxt].v.decimal = symbol_v.decimal;
+			break;
+		case STRING:
+			table[tbnxt].v.string = symbol_v.string;
+			break;
+	}
+	++tbnxt;
+}
+
+static int findsymbol (const char* key)
+{
+	for (int i = 0; i < tbnxt; ++i)
+	{
+		if (!strcmp(table[i].k, key))
+			return i;
+	}
+}
 
 static void putback(int c_) { putbc = c_; }
 
@@ -159,8 +211,8 @@ static void identscan(void)
 // wtf lmao, i'll clean this later
 static void numscan (void)
 {
-	int val = 0, k, dodec = 0;
-	float d, decc = 1;
+	long int val = 0, k, dodec = 0;
+	double d, decc = 1;
 	char* p;
 	while ((p = strchr((char*)"0123456789.", c)) != NULL)
 	{
@@ -287,12 +339,22 @@ static void match (int op)
 		fatal("Expected: %s", TOKEN_TYPE_DEBUG[op]);
 }
 
-astnode makeast () {
+astnode* mknode (int op, int value, astnode *left, astnode *right)
+{
+	astnode *n = (astnode*)malloc(sizeof(astnode));
+	if(!n)
+		fatal("Couldn't malloc node");
 
-
-	astnode a;
-	return a;
+	n->op = op;
+	n->value = value;
+	n->left = left;
+	n->right = right;
+	return n;
 }
+
+// astnode* mkast (void)
+// {
+// }
 
 int main (int argc, char *argv[])
 {
