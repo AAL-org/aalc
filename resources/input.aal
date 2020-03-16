@@ -1,10 +1,9 @@
 fn main() {
+	// A Commented Line!
+	
+	float the_password : 12.33412;
+	str the_secret : "Hello World!";
+	int test : 420;
 
-    /? A Commented Line!
-
-    float the_password : 12.33412;
-    str the_secret : "Hello World!";
-    int test : 420;
-
-    print("The Password Is: " + the_password + " And The Secret Is: " + the_secret);
+	print("The Password Is: " + the_password + " And The Secret Is: " + the_secret);
 }
