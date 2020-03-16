@@ -1,0 +1,3 @@
+[submodule "srxk.h"]
+	path = srxk.h
+	url = https://github.com/serxka/srxk.h
