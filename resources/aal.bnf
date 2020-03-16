@@ -1,35 +1,35 @@
 (* Lets be real. This is probarbly a flawed grammar with many problems, but it's just guide for AAL.*)
 
 unit ::= function
-	   | statement
-	   | unit* ;
+       | statement
+       | unit* ;
 
 function ::= 'fn' identifier '(' parameter-list ')' compound-statement 
-		   | 'fn' identifier '(' parameter-list ')' '->' '(' parameter-list ')' compound-statement ;
+           | 'fn' identifier '(' parameter-list ')' '->' '(' parameter-list ')' compound-statement ;
 
 parameter-list ::= parameter-declaration? ( ',' parameter-list )* ;
 
 parameter-declaration ::= type-specifier '&'? identifier ';' ;
 
 type-specifier ::= 'int'
-				 | 'char'
-				 | 'float'
-				 | 'str' ;
+                 | 'char'
+                 | 'float'
+                 | 'str' ;
 
 definition-list ::= definition-declaration ( ',' definition-list )* ;
 
 definition-declaration ::= identifier
-						 | identifier ':' ( literal | expresion ) ;
+                         | identifier ':' ( literal | expresion ) ;
 
 definition ::= type-specifier definition-list ';' ;
 
 expression ::= function-call
-			 | unary-expression
-			 | binary-expression ;
+             | unary-expression
+             | binary-expression ;
 
 unary-expression ::= '++' identifier
-				   | '--' identifier
-				   | '-' expression ; (*hmmmm*)
+                   | '--' identifier
+                   | '-' expression ; (*hmmmm*)
 
 binary-expression ::= (*fuck it, cant be bothered for now*)
 
@@ -38,25 +38,25 @@ function-call ::= identifier '(' argument-list ')' ;
 argument-list ::= expression? ( ',' argument-list )* ;
 
 conditional-statement ::= 'if' '(' expression ')' compound-statement
-						| 'if' '(' expression ')' compound-statement 'else' compound-statement
-						| 'if' '(' expression ')' compound-statement 'else' conditional-statement ;
+                        | 'if' '(' expression ')' compound-statement 'else' compound-statement
+                        | 'if' '(' expression ')' compound-statement 'else' conditional-statement ;
 
 iteration-statement ::= 'for' '(' expression ';' expression ';' expression ')' compound-statement
-					  | 'while' '(' expression ')' compound-statement ;
+                      | 'while' '(' expression ')' compound-statement ;
 
 statement ::= conditional-statement
-			| iteration-statement
-			| compound-statement
-			| expression ;
+            | iteration-statement
+            | compound-statement
+            | expression ;
 
 compound-statement ::= '{' ( declaration | statement )* '}' ;
 
 literal ::= ''' character  '''
-		  | '"' character* '"'
-		  | number
+          | '"' character* '"'
+          | number
 
 number ::= '-'? digit+
-		 | '-'? digit+ '.' digit+ ;
+         | '-'? digit+ '.' digit+ ;
 
 character ::= letter | number | symbol
 
@@ -65,6 +65,6 @@ identifier ::= letter (letter | digit '_')* ;
 letter ::= [a-z] | [A-Z] ;
 digit ::= [0-9] ;
 symbol ::= '|' | ' ' | '!' | '#' | '$' | '%' | '&' | '(' | ')' 
-		 | '*' | '+' | ',' | '-' | '.' | '/' | ':' | ';' | '>' 
-		 | '=' | '<' | '?' | '@' | '[' | '\' | ']' | '^' | '_' 
-		 | '`' | '{' | '}' | '~' ;
+         | '*' | '+' | ',' | '-' | '.' | '/' | ':' | ';' | '>' 
+         | '=' | '<' | '?' | '@' | '[' | '\' | ']' | '^' | '_' 
+         | '`' | '{' | '}' | '~' ;
