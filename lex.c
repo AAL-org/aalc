@@ -36,33 +36,37 @@ static inline void identscan(void)
 	switch (str[0])
 	{
 		case 'c':{ // char
-					if (!strcmp (str, "char"))
-						t.type = T_CHR;
-					break;}
+			if (!strcmp (str, "char"))
+				t.type = T_CHR;
+			break;}
 		case 'e':{ // else
-					if (!strcmp (str, "else"))
-						t.type = T_ELS;
-					break;}
+			if (!strcmp (str, "else"))
+				t.type = T_ELS;
+			break;}
 		case 'f':{ // fn float
-					if (!strcmp (str, "float"))
-						t.type = T_FLT;
-					else if (!strcmp (str, "fn"))
-						t.type = T_FN;
-					break;}
-		case 'i': {// if int
-					if (!strcmp (str, "if"))
-						t.type = T_IF;
-					else if (!strcmp (str, "int"))
-						t.type = T_INT;
-					break;}
+			if (!strcmp (str, "float"))
+				t.type = T_FLT;
+			else if (!strcmp (str, "fn"))
+				t.type = T_FN;
+			break;}
+		case 'i':{// if int
+			if (!strcmp (str, "if"))
+				t.type = T_IF;
+			else if (!strcmp (str, "int"))
+				t.type = T_INT;
+			break;}
+		case 'r':{ // ret
+			if (!strcmp(str, "ret"))
+				t.type = T_RET;
+			break;}
 		case 's':{ // str
-					if (!strcmp (str, "str"))
-						t.type = T_STR;
-					break;}
+			if (!strcmp (str, "str"))
+				t.type = T_STR;
+			break;}
 		case 'w':{ // while
-					if (!strcmp (str, "while"))
-						t.type = T_WHL;
-					break;}
+			if (!strcmp (str, "while"))
+				t.type = T_WHL;
+			break;}
 	}
 	if (t.type == T_IDNT)
 		t.string = str;
@@ -199,7 +203,12 @@ static int scan(void)
 			t.type = T_ADD;
 			break;
 		case '-':
-			t.type = T_SUB;
+			ntc(); // Check if the next thing is an >
+			if (c == '>')
+				t.type = T_RTY;
+			else{ // if not put that back
+				bkc();
+				t.type = T_SUB;}
 			break;
 		case '*':
 			t.type = T_MUL;
@@ -260,6 +269,7 @@ vec_Token* lex (char* source)
 	tokens = vec_Token_new();
 	while(scan())
 		vec_Token_push(tokens, t);
+	vec_Token_push(tokens, EOF_TOKEN);
 
 	/*while(scan()){
 		if (t.type <= T_STR)
@@ -270,6 +280,7 @@ vec_Token* lex (char* source)
 			printf("token: %s value: %ld\n", TOKEN_TYPE_DEBUG[t.type], t.integer);
 		else if (t.type == T_FLTL)
 			printf("token: %s value: %lf\n", TOKEN_TYPE_DEBUG[t.type], t.decimal);}*/
+
 
 	return tokens;
 }

@@ -22,7 +22,6 @@ int main (int argc, char *argv[])
 	vec_Token *tokens = lex(source);
 	
 	#ifdef debug
-		Token t;
 		for(int i = 0; i < tokens->len; i++)
 			printf("%s\n", TOKEN_TYPE_DEBUG[tokens->data[i].type]);
 	#endif

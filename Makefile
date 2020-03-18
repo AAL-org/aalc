@@ -1,5 +1,5 @@
 OUTPUT=aalc
-OBJ=main.o lex.o parse.o sema.o
+OBJ=main.o lex.o parse.o sema.o tree.o
 
 CFLAGS=-Isrxk.h/
 LDFLAGS=
